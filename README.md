@@ -19,7 +19,66 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## API Documentation
 
-### 1. Enroll Face
+### 1. Verify User (Absensi)
+**Endpoint utama untuk absensi.** Verifikasi wajah terhadap user tertentu.
+
+```
+POST /verify
+Content-Type: multipart/form-data
+```
+
+**Request:**
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| tenant_id | int | ✓ | - | ID tenant |
+| user_id | int | ✓ | - | ID user yang akan diverifikasi |
+| file | file | ✓ | - | Gambar wajah |
+| threshold | float | - | 0.35 | Threshold (0.30-0.40) |
+
+**Response (Sukses - Wajah Cocok):**
+```json
+{
+  "success": true,
+  "verified": true,
+  "message": "Verifikasi berhasil, wajah cocok",
+  "user_id": 1,
+  "user_name": "John Doe",
+  "enrollment_id": 1,
+  "distance": 0.28,
+  "threshold": 0.35,
+  "bbox": {"left": 120, "top": 80, "right": 320, "bottom": 350},
+  "tenant_id": 1
+}
+```
+
+**Response (Gagal - Bukan Orangnya):**
+```json
+{
+  "success": true,
+  "verified": false,
+  "message": "Verifikasi gagal, bukan orang yang sama",
+  "user_id": 1,
+  "user_name": "John Doe",
+  "distance": 0.58,
+  "threshold": 0.35,
+  "tenant_id": 1
+}
+```
+
+**Response (User Belum Enroll):**
+```json
+{
+  "success": false,
+  "verified": false,
+  "message": "User 1 belum terdaftar (tidak ada enrollment)",
+  "tenant_id": 1,
+  "user_id": 1
+}
+```
+
+---
+
+### 2. Enroll Face
 Simpan wajah baru ke database.
 
 ```

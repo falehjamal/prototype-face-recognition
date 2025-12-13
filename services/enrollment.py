@@ -142,6 +142,90 @@ async def identify_face(
     }
 
 
+async def verify_user(
+    tenant_id: int,
+    user_id: int,
+    file: UploadFile,
+    threshold: float = recognition.DEFAULT_THRESHOLD,
+) -> Dict[str, object]:
+    """
+    Verify if the face in the image matches a specific user's enrollment.
+    
+    This is the main flow for attendance:
+    1. Laravel sends tenant_id + user_id + photo
+    2. Python finds the specific user's enrollment
+    3. Compares the photo with that user's face encoding
+    4. Returns success if match, failure if not
+    
+    Args:
+        tenant_id: Tenant identifier
+        user_id: User ID to verify against
+        file: Image file containing the face
+        threshold: Maximum distance threshold for a match
+        
+    Returns:
+        Dict with verification result
+    """
+    # Validate tenant exists
+    config = await tenant_manager.get_tenant_config(tenant_id)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+    
+    # Get the specific user's enrollment
+    enrollment = await tenant_manager.get_user_enrollment(tenant_id, user_id)
+    
+    if not enrollment:
+        return {
+            "success": False,
+            "verified": False,
+            "message": f"User {user_id} belum terdaftar (tidak ada enrollment)",
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+        }
+    
+    # Encode the input face
+    try:
+        encoding, bbox = await recognition.encode_image_with_box(file)
+    except HTTPException as e:
+        return {
+            "success": False,
+            "verified": False,
+            "message": f"Gagal mendeteksi wajah: {e.detail}",
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+        }
+    
+    source = np.array(encoding, dtype=float)
+    target = np.array(enrollment["encoding"], dtype=float)
+    
+    # Check encoding compatibility
+    if len(target) != len(source):
+        return {
+            "success": False,
+            "verified": False,
+            "message": "Encoding tidak kompatibel. User perlu re-enroll.",
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+        }
+    
+    # Calculate cosine distance
+    distance = float(1.0 - float(np.dot(source, target)))
+    is_match = distance <= threshold
+    
+    return {
+        "success": True,
+        "verified": is_match,
+        "message": "Verifikasi berhasil, wajah cocok" if is_match else "Verifikasi gagal, bukan orang yang sama",
+        "user_id": user_id,
+        "user_name": enrollment["label"],
+        "enrollment_id": enrollment["id"],
+        "distance": distance,
+        "threshold": threshold,
+        "bbox": bbox,
+        "tenant_id": tenant_id,
+    }
+
+
 async def list_enrollments(tenant_id: int) -> List[Dict[str, object]]:
     """
     List all enrollments for a tenant.

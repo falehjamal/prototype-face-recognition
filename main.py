@@ -108,6 +108,30 @@ async def identify(
     return await enrollment.identify_face(tenant_id, file, threshold)
 
 
+@app.post("/verify")
+async def verify(
+    tenant_id: int = Form(...),
+    user_id: int = Form(...),
+    file: UploadFile = File(...),
+    threshold: float = Form(recognition.DEFAULT_THRESHOLD),
+):
+    """
+    Verify a face against a specific user's enrollment (for attendance).
+    
+    Flow:
+    1. Laravel sends tenant_id + user_id + photo
+    2. Python finds the specific user's enrollment
+    3. Compares the photo with that user's face encoding
+    4. Returns success if match, failure if not
+    
+    - **tenant_id**: Tenant identifier
+    - **user_id**: User ID to verify against
+    - **file**: Image file containing the face
+    - **threshold**: Maximum distance threshold (default: 0.35)
+    """
+    return await enrollment.verify_user(tenant_id, user_id, file, threshold)
+
+
 @app.get("/enrollments/{tenant_id}")
 async def get_enrollments(tenant_id: int):
     """

@@ -228,6 +228,53 @@ class TenantManager:
         
         return enrollments
     
+    async def get_user_enrollment(self, tenant_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get enrollment for a specific user.
+        
+        Used for verification flow where we compare against a specific user.
+        """
+        await self.initialize()
+        
+        # Check cache first
+        cache_key = f"tenant:{tenant_id}:user:{user_id}:enrollment"
+        cached = await self._redis.get(cache_key)
+        if cached:
+            return json.loads(cached)
+        
+        # Query tenant database
+        table = self._enrollment_table(tenant_id)
+        async with self.get_tenant_connection(tenant_id) as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute(
+                    f"SELECT id, user_id, label, face_encoding, status, created_at "
+                    f"FROM `{table}` WHERE user_id = %s AND status = 'active' "
+                    f"ORDER BY created_at DESC LIMIT 1",
+                    (user_id,)
+                )
+                row = await cursor.fetchone()
+        
+        if not row:
+            return None
+        
+        enrollment = {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "label": row["label"],
+            "encoding": json.loads(row["face_encoding"]) if isinstance(row["face_encoding"], str) else row["face_encoding"],
+            "status": row["status"],
+            "created_at": str(row["created_at"]) if row["created_at"] else None,
+        }
+        
+        # Cache for 60 seconds
+        await self._redis.setex(
+            cache_key,
+            settings.ENCODING_CACHE_TTL,
+            json.dumps(enrollment),
+        )
+        
+        return enrollment
+    
     async def add_enrollment(
         self,
         tenant_id: int,
