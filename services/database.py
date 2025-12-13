@@ -105,11 +105,12 @@ class TenantManager:
         
         # Query gateway database
         # Note: tenants table uses 'port' not 'db_port'
+        # Status can be 1/'active' or 0/'inactive'
         async with self._gateway_pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
                 await cursor.execute(
                     "SELECT id, name, db_host, port, db_name, db_user, db_pass, status "
-                    "FROM tenants WHERE id = %s AND status = 'active'",
+                    "FROM tenants WHERE id = %s AND (status = 'active' OR status = 1)",
                     (tenant_id,)
                 )
                 row = await cursor.fetchone()
@@ -296,6 +297,59 @@ class TenantManager:
         await self._redis.delete(f"tenant:{tenant_id}:enrollments")
         
         return affected > 0
+    
+    # =========================================
+    # Cache Management Methods
+    # =========================================
+    
+    async def invalidate_enrollment_cache(self, tenant_id: int) -> bool:
+        """Invalidate enrollment cache for a specific tenant."""
+        await self.initialize()
+        result = await self._redis.delete(f"tenant:{tenant_id}:enrollments")
+        return result > 0
+    
+    async def invalidate_tenant_config_cache(self, tenant_id: int) -> bool:
+        """Invalidate tenant config cache."""
+        await self.initialize()
+        result = await self._redis.delete(f"tenant:config:{tenant_id}")
+        # Also remove from connection pool to force reconnect
+        if tenant_id in self._tenant_pools:
+            pool = self._tenant_pools.pop(tenant_id)
+            pool.close()
+            await pool.wait_closed()
+        return result > 0
+    
+    async def invalidate_all_tenant_cache(self, tenant_id: int) -> Dict[str, bool]:
+        """Invalidate all caches for a specific tenant."""
+        await self.initialize()
+        enrollment_result = await self._redis.delete(f"tenant:{tenant_id}:enrollments")
+        config_result = await self._redis.delete(f"tenant:config:{tenant_id}")
+        # Remove from connection pool
+        if tenant_id in self._tenant_pools:
+            pool = self._tenant_pools.pop(tenant_id)
+            pool.close()
+            await pool.wait_closed()
+        return {
+            "enrollment_cache_cleared": enrollment_result > 0,
+            "config_cache_cleared": config_result > 0,
+            "tenant_id": tenant_id,
+        }
+    
+    async def get_cache_status(self, tenant_id: int) -> Dict[str, Any]:
+        """Get cache status for a tenant."""
+        await self.initialize()
+        enrollment_cache = await self._redis.get(f"tenant:{tenant_id}:enrollments")
+        config_cache = await self._redis.get(f"tenant:config:{tenant_id}")
+        enrollment_ttl = await self._redis.ttl(f"tenant:{tenant_id}:enrollments")
+        config_ttl = await self._redis.ttl(f"tenant:config:{tenant_id}")
+        return {
+            "tenant_id": tenant_id,
+            "enrollment_cache_exists": enrollment_cache is not None,
+            "enrollment_cache_ttl": enrollment_ttl if enrollment_ttl > 0 else None,
+            "config_cache_exists": config_cache is not None,
+            "config_cache_ttl": config_ttl if config_ttl > 0 else None,
+            "connection_pool_active": tenant_id in self._tenant_pools,
+        }
 
 
 # Singleton instance

@@ -142,6 +142,50 @@ async def delete_enrollment_by_name(tenant_id: int, name: str):
 
 
 # =========================================
+# Cache Management
+# =========================================
+
+@app.post("/cache/{tenant_id}/invalidate")
+async def invalidate_cache(tenant_id: int):
+    """
+    Invalidate all caches for a tenant.
+    
+    Use this endpoint when data is changed directly in the database
+    (not through this API) to ensure fresh data is loaded.
+    
+    - **tenant_id**: Tenant identifier
+    """
+    return await tenant_manager.invalidate_all_tenant_cache(tenant_id)
+
+
+@app.post("/cache/{tenant_id}/refresh-enrollments")
+async def refresh_enrollment_cache(tenant_id: int):
+    """
+    Invalidate enrollment cache and reload from database.
+    
+    - **tenant_id**: Tenant identifier
+    """
+    await tenant_manager.invalidate_enrollment_cache(tenant_id)
+    # Reload from database to re-cache
+    enrollments = await tenant_manager.get_enrollments(tenant_id)
+    return {
+        "cache_refreshed": True,
+        "tenant_id": tenant_id,
+        "enrollment_count": len(enrollments),
+    }
+
+
+@app.get("/cache/{tenant_id}/status")
+async def cache_status(tenant_id: int):
+    """
+    Get cache status for a tenant.
+    
+    - **tenant_id**: Tenant identifier
+    """
+    return await tenant_manager.get_cache_status(tenant_id)
+
+
+# =========================================
 # Health Check
 # =========================================
 
