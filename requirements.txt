@@ -5,3 +5,7 @@ numpy<2
 opencv-python-headless
 insightface>=0.7.3
 onnxruntime
+python-dotenv
+pymysql
+aiomysql
+redis
