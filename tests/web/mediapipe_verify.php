@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Verification | MediaPipe</title>
+    <title>Face Verification + Blink | MediaPipe</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -23,7 +23,6 @@
             --danger: #ef4444;
             --warning: #f59e0b;
             --primary: #6366f1;
-            --info: #3b82f6;
         }
 
         body {
@@ -131,7 +130,7 @@
             transition: all 0.3s;
         }
 
-        .face-guide.detected {
+        .face-guide.ok {
             border-color: var(--success);
             border-style: solid;
         }
@@ -140,8 +139,39 @@
             border-color: var(--warning);
         }
 
-        .face-guide.error {
-            border-color: var(--danger);
+        .blink-instruction {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+
+        .blink-instruction.show {
+            display: block;
+        }
+
+        .blink-instruction.success {
+            background: var(--success);
+            animation: none;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
         }
 
         .controls {
@@ -179,26 +209,42 @@
             color: white;
         }
 
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
         .btn-ghost {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--muted);
         }
 
-        .btn-primary:hover:not(:disabled) {
-            background: #4f46e5;
+        .config-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
         }
 
-        .btn-success:hover:not(:disabled) {
-            background: #059669;
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
-        /* Validation Panel */
+        .config-item label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .config-item input {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+            width: 100px;
+        }
+
         .validation-panel {
             padding: 20px;
         }
@@ -207,7 +253,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 0;
+            padding: 10px 0;
             border-bottom: 1px solid var(--border);
         }
 
@@ -216,13 +262,13 @@
         }
 
         .validation-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 16px;
             flex-shrink: 0;
         }
 
@@ -260,7 +306,27 @@
             margin-top: 2px;
         }
 
-        /* Result Panel */
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .progress-fill.ok {
+            background: var(--success);
+        }
+
+        .progress-fill.warning {
+            background: var(--warning);
+        }
+
         .result-panel {
             padding: 24px;
             text-align: center;
@@ -302,40 +368,6 @@
             margin-bottom: 20px;
         }
 
-        /* Config */
-        .config-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            margin: 16px;
-        }
-
-        .config-item {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .config-item label {
-            font-size: 11px;
-            color: var(--muted);
-            text-transform: uppercase;
-        }
-
-        .config-item input {
-            padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 13px;
-            width: 100px;
-        }
-
-        /* Status Badge */
         .status-badge {
             padding: 6px 12px;
             border-radius: 20px;
@@ -358,7 +390,6 @@
             color: var(--danger);
         }
 
-        /* Loading */
         .loading-overlay {
             position: absolute;
             inset: 0;
@@ -389,30 +420,35 @@
             }
         }
 
-        /* Progress Bar */
-        .progress-bar {
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            overflow: hidden;
+        /* Eye indicator */
+        .eye-status {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
             margin-top: 8px;
         }
 
-        .progress-fill {
-            height: 100%;
-            transition: width 0.3s, background 0.3s;
+        .eye-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
         }
 
-        .progress-fill.ok {
+        .eye-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--muted);
+            transition: all 0.1s;
+        }
+
+        .eye-dot.open {
             background: var(--success);
         }
 
-        .progress-fill.warning {
+        .eye-dot.closed {
             background: var(--warning);
-        }
-
-        .progress-fill.error {
-            background: var(--danger);
         }
     </style>
 </head>
@@ -420,8 +456,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎯 Face Verification</h1>
-            <p class="subtitle">Validasi wajah dengan MediaPipe sebelum verifikasi backend</p>
+            <h1>👁️ Face Verification + Blink Detection</h1>
+            <p class="subtitle">Verifikasi liveness dengan kedipan mata</p>
         </header>
 
         <div class="main-grid">
@@ -436,6 +472,10 @@
                     <video id="video" autoplay playsinline muted></video>
                     <canvas id="overlay"></canvas>
                     <div id="faceGuide" class="face-guide"></div>
+
+                    <div id="blinkInstruction" class="blink-instruction">
+                        👁️ Kedipkan mata Anda
+                    </div>
 
                     <div id="loadingOverlay" class="loading-overlay">
                         <div class="spinner"></div>
@@ -463,22 +503,16 @@
                 </div>
 
                 <div class="controls">
-                    <button id="btnStart" class="btn-primary">
-                        <span>▶️</span> Mulai Kamera
-                    </button>
-                    <button id="btnVerify" class="btn-success" disabled>
-                        <span>✓</span> Verifikasi
-                    </button>
-                    <button id="btnStop" class="btn-ghost" disabled>
-                        <span>⏹️</span> Stop
-                    </button>
+                    <button id="btnStart" class="btn-primary">▶️ Mulai Kamera</button>
+                    <button id="btnVerify" class="btn-success" disabled>✓ Verifikasi</button>
+                    <button id="btnStop" class="btn-ghost" disabled>⏹️ Stop</button>
                 </div>
             </div>
 
             <!-- Validation Panel -->
             <div class="card">
                 <div class="card-header">
-                    <span class="card-title">Validasi Real-time</span>
+                    <span class="card-title">Validasi Liveness</span>
                 </div>
 
                 <div class="validation-panel" id="validationPanel">
@@ -491,11 +525,11 @@
                         </div>
                     </div>
 
-                    <!-- Face Size / Distance -->
+                    <!-- Face Size -->
                     <div class="validation-item">
                         <div class="validation-icon pending" id="iconDistance">📏</div>
                         <div class="validation-content">
-                            <div class="validation-label">Jarak Wajah</div>
+                            <div class="validation-label">Ukuran Wajah</div>
                             <div class="validation-value" id="valueDistance">-</div>
                             <div class="progress-bar">
                                 <div id="barDistance" class="progress-fill" style="width:0%"></div>
@@ -503,7 +537,7 @@
                         </div>
                     </div>
 
-                    <!-- Face Position -->
+                    <!-- Position -->
                     <div class="validation-item">
                         <div class="validation-icon pending" id="iconPosition">🎯</div>
                         <div class="validation-content">
@@ -524,16 +558,26 @@
                         </div>
                     </div>
 
-                    <!-- Face Angle -->
+                    <!-- BLINK DETECTION -->
                     <div class="validation-item">
-                        <div class="validation-icon pending" id="iconAngle">↔️</div>
+                        <div class="validation-icon pending" id="iconBlink">👁️</div>
                         <div class="validation-content">
-                            <div class="validation-label">Sudut Wajah</div>
-                            <div class="validation-value" id="valueAngle">-</div>
+                            <div class="validation-label">Blink Detection</div>
+                            <div class="validation-value" id="valueBlink">Menunggu kedipan...</div>
+                            <div class="eye-status">
+                                <div class="eye-indicator">
+                                    <div class="eye-dot" id="leftEyeDot"></div>
+                                    <span>Kiri</span>
+                                </div>
+                                <div class="eye-indicator">
+                                    <div class="eye-dot" id="rightEyeDot"></div>
+                                    <span>Kanan</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Overall Status -->
+                    <!-- Overall -->
                     <div class="validation-item" style="margin-top:12px;padding-top:16px;border-top:2px solid var(--border)">
                         <div class="validation-icon pending" id="iconOverall">⏳</div>
                         <div class="validation-content">
@@ -543,22 +587,20 @@
                     </div>
                 </div>
 
-                <!-- Result Panel (hidden by default) -->
+                <!-- Result Panel -->
                 <div class="result-panel" id="resultPanel">
                     <div class="result-icon" id="resultIcon">✓</div>
                     <div class="result-title" id="resultTitle">Verifikasi Berhasil</div>
                     <div class="result-message" id="resultMessage">Halo, John Doe!</div>
-                    <button id="btnRetry" class="btn-primary" style="margin:0 auto">
-                        🔄 Coba Lagi
-                    </button>
+                    <button id="btnRetry" class="btn-primary" style="margin:0 auto">🔄 Coba Lagi</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MediaPipe Face Detection -->
+    <!-- MediaPipe Face Mesh (for blink detection) -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
     <script>
         // Elements
@@ -567,10 +609,10 @@
         const ctx = overlay.getContext('2d');
         const faceGuide = document.getElementById('faceGuide');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const blinkInstruction = document.getElementById('blinkInstruction');
         const validationPanel = document.getElementById('validationPanel');
         const resultPanel = document.getElementById('resultPanel');
 
-        // Buttons
         const btnStart = document.getElementById('btnStart');
         const btnVerify = document.getElementById('btnVerify');
         const btnStop = document.getElementById('btnStop');
@@ -578,46 +620,200 @@
 
         // State
         let stream = null;
-        let faceDetection = null;
-        let animationId = null;
-        let lastValidation = null;
-        let isValidating = false;
-
-        // Validation thresholds
-        const THRESHOLDS = {
-            minFaceRatio: 0.20, // Minimum face width as ratio of frame
-            maxFaceRatio: 0.60, // Maximum face width as ratio of frame
-            idealFaceRatio: 0.35, // Ideal face size
-            maxOffsetX: 0.15, // Maximum horizontal offset from center
-            maxOffsetY: 0.15, // Maximum vertical offset from center
-            minBrightness: 80, // Minimum average brightness (0-255)
-            maxBrightness: 200, // Maximum brightness (overexposed)
-            idealBrightness: 140, // Ideal brightness
-            maxYawAngle: 20, // Maximum face yaw angle
+        let faceMesh = null;
+        let camera = null;
+        let lastValidation = {
+            allPassed: false
         };
 
+        // Blink detection state
+        let blinkState = {
+            detected: false,
+            blinkCount: 0,
+            lastEAR: 1.0,
+            eyesClosed: false,
+            requiredBlinks: 1,
+            blinkHistory: []
+        };
+
+        // Thresholds
+        const THRESHOLDS = {
+            minFaceRatio: 0.18,
+            maxFaceRatio: 0.65,
+            maxOffsetX: 0.18,
+            maxOffsetY: 0.18,
+            minBrightness: 70,
+            maxBrightness: 210,
+            earThreshold: 0.21, // Eye Aspect Ratio threshold for blink
+            earClosedFrames: 2, // Frames eyes must be closed
+            earOpenFrames: 2 // Frames eyes must be open after
+        };
+
+        // Face Mesh landmark indices for eyes
+        // Left eye: 362, 385, 387, 263, 373, 380
+        // Right eye: 33, 160, 158, 133, 153, 144
+        const LEFT_EYE = [362, 385, 387, 263, 373, 380];
+        const RIGHT_EYE = [33, 160, 158, 133, 153, 144];
+
         // =========================================
-        // MediaPipe Setup
+        // Eye Aspect Ratio (EAR) Calculation
         // =========================================
 
-        function initMediaPipe() {
-            faceDetection = new FaceDetection({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
-            });
+        function distance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
 
-            faceDetection.setOptions({
-                model: 'short',
-                minDetectionConfidence: 0.5
-            });
+        function calculateEAR(landmarks, eyeIndices) {
+            // Get eye landmarks
+            const p = eyeIndices.map(i => landmarks[i]);
 
-            faceDetection.onResults(onFaceDetectionResults);
+            // Vertical distances
+            const v1 = distance(p[1], p[5]);
+            const v2 = distance(p[2], p[4]);
+
+            // Horizontal distance
+            const h = distance(p[0], p[3]);
+
+            // Eye Aspect Ratio
+            return (v1 + v2) / (2.0 * h);
+        }
+
+        function detectBlink(landmarks) {
+            if (!landmarks || landmarks.length < 468) return null;
+
+            const leftEAR = calculateEAR(landmarks, LEFT_EYE);
+            const rightEAR = calculateEAR(landmarks, RIGHT_EYE);
+            const avgEAR = (leftEAR + rightEAR) / 2;
+
+            const leftOpen = leftEAR > THRESHOLDS.earThreshold;
+            const rightOpen = rightEAR > THRESHOLDS.earThreshold;
+            const eyesOpen = avgEAR > THRESHOLDS.earThreshold;
+
+            // Update eye indicators
+            document.getElementById('leftEyeDot').className = `eye-dot ${leftOpen ? 'open' : 'closed'}`;
+            document.getElementById('rightEyeDot').className = `eye-dot ${rightOpen ? 'open' : 'closed'}`;
+
+            // Blink detection state machine
+            blinkState.blinkHistory.push(eyesOpen);
+            if (blinkState.blinkHistory.length > 10) {
+                blinkState.blinkHistory.shift();
+            }
+
+            // Detect blink: eyes were open -> closed -> open
+            if (!blinkState.detected) {
+                const history = blinkState.blinkHistory;
+                const len = history.length;
+
+                if (len >= 5) {
+                    // Check pattern: open, open, closed, open, open
+                    const wasOpen = history.slice(0, 2).every(v => v);
+                    const wasClosed = history.slice(2, 4).some(v => !v);
+                    const isOpen = history.slice(-2).every(v => v);
+
+                    if (wasOpen && wasClosed && isOpen) {
+                        blinkState.blinkCount++;
+                        blinkState.blinkHistory = [];
+
+                        if (blinkState.blinkCount >= blinkState.requiredBlinks) {
+                            blinkState.detected = true;
+                            blinkInstruction.textContent = '✓ Kedipan Terdeteksi!';
+                            blinkInstruction.classList.add('success');
+                        }
+                    }
+                }
+            }
+
+            return {
+                leftEAR,
+                rightEAR,
+                avgEAR,
+                eyesOpen,
+                blinkDetected: blinkState.detected,
+                blinkCount: blinkState.blinkCount
+            };
         }
 
         // =========================================
-        // Validation Logic
+        // MediaPipe Face Mesh Setup
         // =========================================
 
-        function validateFace(detection, frameWidth, frameHeight, brightness) {
+        function initFaceMesh() {
+            faceMesh = new FaceMesh({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            });
+
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            faceMesh.onResults(onFaceMeshResults);
+        }
+
+        function onFaceMeshResults(results) {
+            if (!video.videoWidth) return;
+
+            overlay.width = video.clientWidth;
+            overlay.height = video.clientHeight;
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+            const brightness = calculateBrightness(video);
+            const face = results.multiFaceLandmarks?.[0] || null;
+
+            let blinkResult = null;
+
+            if (face) {
+                // Draw face mesh (simplified - just contour)
+                ctx.strokeStyle = 'rgba(99, 102, 241, 0.5)';
+                ctx.lineWidth = 1;
+
+                // Draw eye contours
+                drawEyeContour(face, LEFT_EYE);
+                drawEyeContour(face, RIGHT_EYE);
+
+                // Blink detection
+                blinkResult = detectBlink(face);
+            }
+
+            // Validate face
+            lastValidation = validateFace(face, video.videoWidth, video.videoHeight, brightness, blinkResult);
+            updateValidationUI(lastValidation);
+
+            // Update face guide
+            faceGuide.className = 'face-guide ' + (
+                face ? (lastValidation.allPassed ? 'ok' : 'warning') : ''
+            );
+
+            // Show blink instruction when other validations pass
+            if (lastValidation.basicPassed && !blinkState.detected) {
+                blinkInstruction.classList.add('show');
+            } else if (blinkState.detected) {
+                blinkInstruction.classList.add('show');
+            } else {
+                blinkInstruction.classList.remove('show');
+                blinkInstruction.classList.remove('success');
+            }
+        }
+
+        function drawEyeContour(landmarks, indices) {
+            ctx.beginPath();
+            indices.forEach((idx, i) => {
+                const x = landmarks[idx].x * overlay.width;
+                const y = landmarks[idx].y * overlay.height;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        // =========================================
+        // Validation
+        // =========================================
+
+        function validateFace(landmarks, frameWidth, frameHeight, brightness, blinkResult) {
             const result = {
                 faceDetected: false,
                 distance: {
@@ -631,118 +827,107 @@
                 },
                 lighting: {
                     ok: false,
-                    value: 0,
+                    value: brightness,
                     message: ''
                 },
-                angle: {
+                blink: {
                     ok: false,
+                    count: 0,
                     message: ''
                 },
+                basicPassed: false,
                 allPassed: false
             };
 
-            if (!detection) {
+            if (!landmarks || landmarks.length < 468) {
                 result.distance.message = 'Tidak ada wajah';
                 result.position.message = 'Tidak ada wajah';
                 result.lighting.message = 'Tidak ada wajah';
-                result.angle.message = 'Tidak ada wajah';
+                result.blink.message = 'Tidak ada wajah';
                 return result;
             }
 
             result.faceDetected = true;
-            const bbox = detection.boundingBox;
 
-            // 1. Face Distance (size)
-            // MediaPipe bbox.width is already normalized (0-1), so use it directly
-            const faceRatio = bbox.width; // This is already the ratio of face width to frame width
-            result.distance.value = faceRatio;
+            // Calculate face bounding box from landmarks
+            let minX = 1,
+                maxX = 0,
+                minY = 1,
+                maxY = 0;
+            landmarks.forEach(p => {
+                minX = Math.min(minX, p.x);
+                maxX = Math.max(maxX, p.x);
+                minY = Math.min(minY, p.y);
+                maxY = Math.max(maxY, p.y);
+            });
 
-            if (faceRatio < THRESHOLDS.minFaceRatio) {
-                result.distance.ok = false;
-                result.distance.message = `Terlalu jauh (${(faceRatio*100).toFixed(0)}%)`;
-            } else if (faceRatio > THRESHOLDS.maxFaceRatio) {
-                result.distance.ok = false;
-                result.distance.message = `Terlalu dekat (${(faceRatio*100).toFixed(0)}%)`;
+            const faceWidth = maxX - minX;
+            const faceHeight = maxY - minY;
+            const faceCenterX = (minX + maxX) / 2;
+            const faceCenterY = (minY + maxY) / 2;
+
+            // Distance (face size)
+            result.distance.value = faceWidth;
+            if (faceWidth < THRESHOLDS.minFaceRatio) {
+                result.distance.message = `Terlalu jauh (${(faceWidth*100).toFixed(0)}%)`;
+            } else if (faceWidth > THRESHOLDS.maxFaceRatio) {
+                result.distance.message = `Terlalu dekat (${(faceWidth*100).toFixed(0)}%)`;
             } else {
                 result.distance.ok = true;
-                result.distance.message = `Ideal (${(faceRatio*100).toFixed(0)}%)`;
+                result.distance.message = `OK (${(faceWidth*100).toFixed(0)}%)`;
             }
 
-            // 2. Face Position (centered)
-            // xCenter and yCenter are normalized (0-1), 0.5 = center
-            const faceCenterX = bbox.xCenter; // 0-1, 0.5 = center
-            const faceCenterY = bbox.yCenter; // 0-1, 0.5 = center  
+            // Position
             const offsetX = Math.abs(faceCenterX - 0.5);
             const offsetY = Math.abs(faceCenterY - 0.5);
-
             if (offsetX > THRESHOLDS.maxOffsetX || offsetY > THRESHOLDS.maxOffsetY) {
-                result.position.ok = false;
-                // Note: video is mirrored, so left/right directions are swapped
-                if (offsetX > offsetY) {
-                    result.position.message = faceCenterX < 0.5 ? 'Geser ke kiri' : 'Geser ke kanan';
-                } else {
-                    result.position.message = faceCenterY < 0.5 ? 'Geser ke bawah' : 'Geser ke atas';
-                }
+                result.position.message = 'Tidak di tengah';
             } else {
                 result.position.ok = true;
-                result.position.message = 'Posisi tepat di tengah';
+                result.position.message = 'Posisi OK';
             }
 
-            // 3. Lighting
-            result.lighting.value = brightness;
-
+            // Lighting
             if (brightness < THRESHOLDS.minBrightness) {
-                result.lighting.ok = false;
                 result.lighting.message = `Terlalu gelap (${brightness.toFixed(0)})`;
             } else if (brightness > THRESHOLDS.maxBrightness) {
-                result.lighting.ok = false;
                 result.lighting.message = `Terlalu terang (${brightness.toFixed(0)})`;
             } else {
                 result.lighting.ok = true;
-                result.lighting.message = `Pencahayaan baik (${brightness.toFixed(0)})`;
+                result.lighting.message = `OK (${brightness.toFixed(0)})`;
             }
 
-            // 4. Face Angle (using keypoints if available)
-            if (detection.landmarks && detection.landmarks.length >= 2) {
-                const leftEye = detection.landmarks[0];
-                const rightEye = detection.landmarks[1];
-                const eyeAngle = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * (180 / Math.PI);
-
-                if (Math.abs(eyeAngle) > THRESHOLDS.maxYawAngle) {
-                    result.angle.ok = false;
-                    result.angle.message = `Miringkan kepala (${eyeAngle.toFixed(0)}°)`;
+            // Blink
+            if (blinkResult) {
+                result.blink.count = blinkResult.blinkCount;
+                if (blinkResult.blinkDetected) {
+                    result.blink.ok = true;
+                    result.blink.message = `✓ Kedipan terdeteksi (${blinkResult.blinkCount}x)`;
                 } else {
-                    result.angle.ok = true;
-                    result.angle.message = `Sudut baik (${eyeAngle.toFixed(0)}°)`;
+                    result.blink.message = `Menunggu kedipan... (EAR: ${blinkResult.avgEAR.toFixed(2)})`;
                 }
             } else {
-                result.angle.ok = true;
-                result.angle.message = 'Sudut baik';
+                result.blink.message = 'Analisis mata...';
             }
 
-            // Overall
-            result.allPassed = result.distance.ok && result.position.ok &&
-                result.lighting.ok && result.angle.ok;
+            result.basicPassed = result.distance.ok && result.position.ok && result.lighting.ok;
+            result.allPassed = result.basicPassed && result.blink.ok;
 
             return result;
         }
 
-        function calculateBrightness(video, canvas) {
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = 100; // Sample at low resolution for performance
-            tempCanvas.height = 75;
-            tempCtx.drawImage(video, 0, 0, 100, 75);
+        function calculateBrightness(source) {
+            const canvas = document.createElement('canvas');
+            const tempCtx = canvas.getContext('2d');
+            canvas.width = 100;
+            canvas.height = 75;
+            tempCtx.drawImage(source, 0, 0, 100, 75);
 
-            const imageData = tempCtx.getImageData(0, 0, 100, 75);
-            const data = imageData.data;
+            const data = tempCtx.getImageData(0, 0, 100, 75).data;
             let sum = 0;
-
             for (let i = 0; i < data.length; i += 4) {
-                // Luminance formula
                 sum += (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
             }
-
             return sum / (data.length / 4);
         }
 
@@ -750,127 +935,43 @@
         // UI Updates
         // =========================================
 
-        function updateValidationUI(validation) {
-            // Face Detection
-            setValidationItem('Face',
-                validation.faceDetected ? 'ok' : 'error',
-                validation.faceDetected ? '✓' : '✗',
-                validation.faceDetected ? 'Wajah terdeteksi' : 'Tidak ada wajah'
-            );
+        function updateValidationUI(v) {
+            setValidation('Face', v.faceDetected, v.faceDetected ? 'Wajah terdeteksi' : 'Tidak ada wajah');
+            setValidation('Distance', v.distance.ok, v.distance.message);
+            setValidation('Position', v.position.ok, v.position.message);
+            setValidation('Light', v.lighting.ok, v.lighting.message);
+            setValidation('Blink', v.blink.ok, v.blink.message);
+            setValidation('Overall', v.allPassed, v.allPassed ? 'Siap untuk verifikasi!' : 'Perbaiki kondisi');
 
-            // Distance
-            const distPct = Math.min(100, (validation.distance.value / THRESHOLDS.maxFaceRatio) * 100);
-            setValidationItem('Distance',
-                validation.distance.ok ? 'ok' : 'warning',
-                validation.distance.ok ? '✓' : '⚠',
-                validation.distance.message
-            );
-            document.getElementById('barDistance').style.width = `${distPct}%`;
-            document.getElementById('barDistance').className =
-                `progress-fill ${validation.distance.ok ? 'ok' : 'warning'}`;
+            // Progress bars
+            document.getElementById('barDistance').style.width = `${Math.min(100, v.distance.value * 150)}%`;
+            document.getElementById('barDistance').className = `progress-fill ${v.distance.ok ? 'ok' : 'warning'}`;
 
-            // Position
-            setValidationItem('Position',
-                validation.position.ok ? 'ok' : 'warning',
-                validation.position.ok ? '✓' : '↔',
-                validation.position.message
-            );
+            document.getElementById('barLight').style.width = `${Math.min(100, (v.lighting.value / 255) * 100)}%`;
+            document.getElementById('barLight').className = `progress-fill ${v.lighting.ok ? 'ok' : 'warning'}`;
 
-            // Lighting
-            const lightPct = Math.min(100, (validation.lighting.value / 255) * 100);
-            setValidationItem('Light',
-                validation.lighting.ok ? 'ok' : 'warning',
-                validation.lighting.ok ? '✓' : '💡',
-                validation.lighting.message
-            );
-            document.getElementById('barLight').style.width = `${lightPct}%`;
-            document.getElementById('barLight').className =
-                `progress-fill ${validation.lighting.ok ? 'ok' : 'warning'}`;
-
-            // Angle
-            setValidationItem('Angle',
-                validation.angle.ok ? 'ok' : 'warning',
-                validation.angle.ok ? '✓' : '↺',
-                validation.angle.message
-            );
-
-            // Overall
-            setValidationItem('Overall',
-                validation.allPassed ? 'ok' : 'warning',
-                validation.allPassed ? '✓' : '⏳',
-                validation.allPassed ? 'Siap untuk verifikasi!' : 'Perbaiki kondisi di atas'
-            );
-
-            // Update face guide
-            faceGuide.className = 'face-guide ' + (
-                validation.faceDetected ?
-                (validation.allPassed ? 'detected' : 'warning') :
-                ''
-            );
-
-            // Update verify button
-            btnVerify.disabled = !validation.allPassed;
-
-            // Update status badge
+            // Status badge & verify button
             const badge = document.getElementById('statusBadge');
-            if (validation.allPassed) {
+            if (v.allPassed) {
                 badge.textContent = 'Siap';
                 badge.className = 'status-badge ready';
-            } else if (validation.faceDetected) {
-                badge.textContent = 'Perbaiki';
+                btnVerify.disabled = false;
+            } else if (v.faceDetected) {
+                badge.textContent = v.basicPassed ? 'Kedipkan' : 'Perbaiki';
                 badge.className = 'status-badge waiting';
+                btnVerify.disabled = true;
             } else {
-                badge.textContent = 'Mencari';
+                badge.textContent = 'No Face';
                 badge.className = 'status-badge error';
+                btnVerify.disabled = true;
             }
         }
 
-        function setValidationItem(name, status, icon, value) {
-            document.getElementById(`icon${name}`).className = `validation-icon ${status}`;
-            document.getElementById(`icon${name}`).textContent = icon;
-            document.getElementById(`value${name}`).textContent = value;
-        }
-
-        // =========================================
-        // Face Detection Results
-        // =========================================
-
-        function onFaceDetectionResults(results) {
-            if (!video.videoWidth) return;
-
-            overlay.width = video.clientWidth;
-            overlay.height = video.clientHeight;
-            ctx.clearRect(0, 0, overlay.width, overlay.height);
-
-            const brightness = calculateBrightness(video, overlay);
-            const detection = results.detections[0] || null;
-
-            // Draw face bbox
-            if (detection) {
-                const bbox = detection.boundingBox;
-                const x = bbox.xCenter * overlay.width - (bbox.width * overlay.width / 2);
-                const y = bbox.yCenter * overlay.height - (bbox.height * overlay.height / 2);
-                const w = bbox.width * overlay.width;
-                const h = bbox.height * overlay.height;
-
-                ctx.strokeStyle = '#10b981';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x, y, w, h);
-
-                // Draw landmarks
-                if (detection.landmarks) {
-                    ctx.fillStyle = '#6366f1';
-                    detection.landmarks.forEach(point => {
-                        ctx.beginPath();
-                        ctx.arc(point.x * overlay.width, point.y * overlay.height, 4, 0, 2 * Math.PI);
-                        ctx.fill();
-                    });
-                }
-            }
-
-            // Validate
-            lastValidation = validateFace(detection, video.videoWidth, video.videoHeight, brightness);
-            updateValidationUI(lastValidation);
+        function setValidation(name, ok, text) {
+            const icon = document.getElementById(`icon${name}`);
+            icon.className = `validation-icon ${ok ? 'ok' : (text.includes('Tidak') ? 'pending' : 'warning')}`;
+            icon.textContent = ok ? '✓' : (name === 'Blink' ? '👁️' : '⚠');
+            document.getElementById(`value${name}`).textContent = text;
         }
 
         // =========================================
@@ -889,12 +990,23 @@
                 video.srcObject = stream;
                 await video.play();
 
-                initMediaPipe();
+                // Reset blink state
+                blinkState = {
+                    detected: false,
+                    blinkCount: 0,
+                    lastEAR: 1.0,
+                    eyesClosed: false,
+                    requiredBlinks: 1,
+                    blinkHistory: []
+                };
+                blinkInstruction.textContent = '👁️ Kedipkan mata Anda';
+                blinkInstruction.classList.remove('success', 'show');
 
-                // Start detection loop
-                const camera = new Camera(video, {
+                initFaceMesh();
+
+                camera = new Camera(video, {
                     onFrame: async () => {
-                        await faceDetection.send({
+                        if (faceMesh) await faceMesh.send({
                             image: video
                         });
                     },
@@ -906,30 +1018,30 @@
                 btnStart.disabled = true;
                 btnStop.disabled = false;
 
-                // Show validation panel, hide result panel
                 validationPanel.style.display = 'block';
                 resultPanel.classList.remove('show');
 
             } catch (err) {
-                alert('Error accessing camera: ' + err.message);
+                alert('Error: ' + err.message);
             }
         }
 
         function stopCamera() {
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
             if (stream) {
                 stream.getTracks().forEach(t => t.stop());
                 stream = null;
             }
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-
             ctx.clearRect(0, 0, overlay.width, overlay.height);
 
             btnStart.disabled = false;
             btnVerify.disabled = true;
             btnStop.disabled = true;
 
+            blinkInstruction.classList.remove('show', 'success');
             document.getElementById('statusBadge').textContent = 'Menunggu';
             document.getElementById('statusBadge').className = 'status-badge waiting';
         }
@@ -939,16 +1051,14 @@
         // =========================================
 
         async function verify() {
-            if (!lastValidation || !lastValidation.allPassed) {
-                alert('Validasi belum terpenuhi!');
+            if (!lastValidation.allPassed) {
+                alert('Validasi belum lengkap! Pastikan kedipan terdeteksi.');
                 return;
             }
 
-            // Show loading
             loadingOverlay.classList.add('show');
             btnVerify.disabled = true;
 
-            // Capture frame
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -958,17 +1068,11 @@
                 canvas.toBlob(resolve, 'image/jpeg', 0.9);
             });
 
-            // Get config
             const apiUrl = document.getElementById('apiUrl').value.replace(/\/$/, '');
-            const tenantId = document.getElementById('tenantId').value;
-            const userId = document.getElementById('userId').value;
-            const threshold = document.getElementById('threshold').value;
-
-            // Send to backend
             const formData = new FormData();
-            formData.append('tenant_id', tenantId);
-            formData.append('user_id', userId);
-            formData.append('threshold', threshold);
+            formData.append('tenant_id', document.getElementById('tenantId').value);
+            formData.append('user_id', document.getElementById('userId').value);
+            formData.append('threshold', document.getElementById('threshold').value);
             formData.append('file', blob, 'capture.jpg');
 
             try {
@@ -978,11 +1082,7 @@
                 });
 
                 const data = await response.json();
-
-                // Hide loading
                 loadingOverlay.classList.remove('show');
-
-                // Show result
                 showResult(data);
 
             } catch (err) {
@@ -1021,13 +1121,23 @@
         function retry() {
             resultPanel.classList.remove('show');
             validationPanel.style.display = 'block';
-            btnVerify.disabled = !lastValidation?.allPassed;
+
+            // Reset blink
+            blinkState = {
+                detected: false,
+                blinkCount: 0,
+                lastEAR: 1.0,
+                eyesClosed: false,
+                requiredBlinks: 1,
+                blinkHistory: []
+            };
+            blinkInstruction.textContent = '👁️ Kedipkan mata Anda';
+            blinkInstruction.classList.remove('success');
+
+            btnVerify.disabled = true;
         }
 
-        // =========================================
-        // Event Listeners
-        // =========================================
-
+        // Event listeners
         btnStart.onclick = startCamera;
         btnStop.onclick = stopCamera;
         btnVerify.onclick = verify;
