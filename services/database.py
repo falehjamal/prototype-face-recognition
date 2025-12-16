@@ -104,6 +104,14 @@ class TenantManager:
         cached = await self._redis.get(cache_key)
         if cached:
             data = json.loads(cached)
+            # Handle old cached data that may have host:port format in db_host
+            if ":" in data.get("db_host", ""):
+                host_parts = data["db_host"].split(":", 1)
+                data["db_host"] = host_parts[0]
+                data["db_server_port"] = int(host_parts[1])
+            # Ensure db_server_port exists for old cache entries
+            if "db_server_port" not in data:
+                data["db_server_port"] = 0
             return TenantConfig(**data)
         
         # Query gateway database
